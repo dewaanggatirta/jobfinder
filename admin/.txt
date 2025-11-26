@@ -1,0 +1,30 @@
+    <div class="card p-3 mb-3">
+            <form method="post" enctype="multipart/form-data" class="row g-2">
+                <div class="col-md-6"><input name="title" class="form-control" placeholder="Judul" required></div>
+                <div class="col-md-6"><input name="company" class="form-control" placeholder="Perusahaan" required>
+                </div>
+
+                <div class="col-md-4">
+                    <select name="location" class="form-select">
+                        <?php foreach($locations as $l): ?><option value="<?=$l?>"><?=$l?></option><?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <select name="category" class="form-select">
+                        <?php foreach($categories as $c): ?><option value="<?=$c?>"><?=$c?></option><?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-4"><input name="type" class="form-control" placeholder="Tipe (Full-time)"></div>
+
+                <div class="col-md-6"><input name="salary" class="form-control" placeholder="Gaji"></div>
+                <div class="col-md-6"><input name="description" class="form-control" placeholder="Deskripsi"></div>
+
+                <!-- Upload logo -->
+                <div class="col-md-6">
+                    <input type="file" name="logo" class="form-control" accept="image/*" required>
+                    <small class="text-muted">Upload logo perusahaan (JPG, PNG)</small>
+                </div>
+
+                <div class="col-12"><button class="btn btn-primary" name="add">Tambah Lowongan</button></div>
+            </form>
+        </div>
