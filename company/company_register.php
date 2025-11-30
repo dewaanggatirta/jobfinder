@@ -1,12 +1,12 @@
 <?php
-// Tampilkan Error agar tidak blank jika ada masalah
+// company/company_register.php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-require_once('./config.php');
+// PATH DIPERBAIKI
+require_once('../config.php');
 session_start();
 
-// Jika sudah login, lempar ke dashboard
 if (isset($_SESSION['company_id'])) {
     header('Location: company_dashboard.php');
     exit;
@@ -21,27 +21,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'];
     $confirm_password = $_POST['confirm_password'];
 
-    // Validasi sederhana
     if (empty($name) || empty($email) || empty($password)) {
         $err = "Semua kolom wajib diisi.";
     } elseif ($password !== $confirm_password) {
         $err = "Konfirmasi password tidak cocok.";
     } else {
-        // 1. Cek apakah email sudah terdaftar
         $stmt = $conn->prepare("SELECT id FROM companies WHERE email = ?");
-        
         if ($stmt) {
             $stmt->bind_param('s', $email);
             $stmt->execute();
             if ($stmt->get_result()->num_rows > 0) {
                 $err = "Email perusahaan ini sudah terdaftar.";
             } else {
-                // 2. Jika email aman, lakukan Insert
                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                
                 $insert = $conn->prepare("INSERT INTO companies (company_name, email, password) VALUES (?, ?, ?)");
                 
-                // PENTING: Cek jika prepare gagal (penyebab umum blank screen)
                 if ($insert) {
                     $insert->bind_param('sss', $name, $email, $hashed_password);
                     if ($insert->execute()) {
@@ -50,12 +44,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $err = "Gagal menyimpan data: " . $insert->error;
                     }
                 } else {
-                    // Tampilkan error query jika prepare gagal
                     $err = "Database Error (Insert): " . $conn->error;
                 }
             }
         } else {
-            // Tampilkan error query jika prepare select gagal
             $err = "Database Error (Check Email): " . $conn->error;
         }
     }

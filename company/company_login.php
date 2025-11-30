@@ -1,12 +1,12 @@
 <?php
-// Tampilkan semua error agar tidak blank
+// company/company_login.php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-require_once('./config.php');
+// PATH DIPERBAIKI: Naik satu level ke root untuk cari config.php
+require_once('../config.php');
 session_start();
 
-// Jika sudah login, langsung ke dashboard
 if (isset($_SESSION['company_id'])) {
     header('Location: company_dashboard.php');
     exit;
@@ -18,11 +18,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
 
-    // Validasi input tidak boleh kosong
     if (empty($email) || empty($password)) {
         $err = "Email dan password wajib diisi.";
     } else {
-        // Cek tabel companies
         $stmt = $conn->prepare('SELECT id, company_name, password FROM companies WHERE email = ?');
         if ($stmt) {
             $stmt->bind_param('s', $email);
@@ -88,7 +86,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
                 <div class="text-center mt-3">
-                    <a href="index.php" class="text-decoration-none text-secondary">&larr; Kembali ke Beranda</a>
+                    <!-- LINK KEMBALI DIPERBAIKI (NAIK KE ROOT) -->
+                    <a href="../index.php" class="text-decoration-none text-secondary">&larr; Kembali ke Beranda</a>
                 </div>
             </div>
         </div>
