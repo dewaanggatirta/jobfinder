@@ -1,10 +1,21 @@
 <?php
-// user/index.php
+// index.php (ROOT FOLDER)
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 require_once('./config.php');
 session_start();
+
+// --- 1. HITUNG STATISTIK REAL-TIME ---
+$res_count_jobs = $conn->query("SELECT COUNT(*) FROM jobs WHERE status = 'active'");
+$count_jobs = $res_count_jobs->fetch_row()[0];
+
+$res_count_comp = $conn->query("SELECT COUNT(*) FROM companies");
+$count_companies = $res_count_comp->fetch_row()[0];
+
+$res_count_users = $conn->query("SELECT COUNT(*) FROM users");
+$count_users = $res_count_users->fetch_row()[0];
+// -------------------------------------
 
 $locations = ['Jakarta','Bandung','Bali','Surabaya','Yogyakarta'];
 
@@ -23,28 +34,33 @@ $loc = $_GET['location'] ?? '';
 $cat = $_GET['category'] ?? '';
 $q   = $_GET['q'] ?? '';
 
-// Query Data Lowongan Active
+// Query hanya lowongan ACTIVE
 $sql = "SELECT id, title, company, location, category, type, salary, posted_at, IFNULL(logo,'') AS logo FROM jobs WHERE status = 'active'";
 $params = [];
 $types = '';
 
+// LOGIKA PENCARIAN
 if ($q !== '') {
     $sql .= " AND (title LIKE ? OR company LIKE ? OR location LIKE ?)";
     $like = "%{$q}%";
     $params[] = $like; $params[] = $like; $params[] = $like;
     $types .= 'sss';
 }
+
 if ($loc !== '') {
     $sql .= " AND location = ?";
-    $params[] = $loc; $types .= 's';
+    $params[] = $loc;
+    $types .= 's';
 }
 if ($cat !== '') {
     $sql .= " AND category = ?";
-    $params[] = $cat; $types .= 's';
+    $params[] = $cat;
+    $types .= 's';
 }
 
 $sql .= " ORDER BY posted_at DESC";
 
+// Eksekusi Query
 $res = false;
 if (count($params) > 0) {
     $stmt = $conn->prepare($sql);
@@ -72,180 +88,67 @@ if (count($params) > 0) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>JobFinder - Temukan Karir Impian</title>
     
-    <!-- CSS Dependencies -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        :root {
-            --primary-color: #0f172a;
-            --accent-color: #2563eb;
-            --bg-color: #f1f5f9;
-        }
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: var(--bg-color);
-            color: #334155;
-        }
-        
-        /* Navbar Transparan ke Putih saat Scroll (efek glass) */
-        .navbar {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-            padding: 15px 0;
-        }
-        .navbar-brand {
-            font-weight: 800;
-            color: var(--accent-color) !important;
-            letter-spacing: -0.5px;
-            font-size: 1.5rem;
-        }
-
-        /* Hero Section dengan Gambar */
+        :root { --primary-color: #0f172a; --accent-color: #2563eb; --bg-color: #f1f5f9; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-color); color: #334155; }
+        .navbar { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0,0,0,0.05); padding: 15px 0; }
+        .navbar-brand { font-weight: 800; color: var(--accent-color) !important; letter-spacing: -0.5px; font-size: 1.5rem; }
         .hero-section {
-            /* Gambar Background dari Unsplash (Legal & Free) */
             background: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.7)), url('https://images.unsplash.com/photo-1497215728101-856f4ea42174?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
-            background-size: cover;
-            background-position: center;
-            color: white;
-            padding: 120px 0 160px; /* Padding bawah besar untuk space search bar */
-            border-radius: 0 0 50px 50px;
-            position: relative;
-            margin-bottom: 40px;
+            background-size: cover; background-position: center; color: white;
+            padding: 120px 0 160px; border-radius: 0 0 50px 50px; position: relative; margin-bottom: 40px;
         }
-        
-        /* Search Bar Mengambang */
-        .search-wrapper {
-            margin-top: -80px; /* Menarik search bar ke atas menumpuk hero */
-            position: relative;
-            z-index: 10;
-        }
-        .search-container {
-            background: white;
-            padding: 15px;
-            border-radius: 20px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
-            border: 1px solid rgba(0,0,0,0.05);
-        }
-        .form-control, .form-select {
-            border: 1px solid #e2e8f0;
-            padding: 15px;
-            border-radius: 12px;
-            font-size: 1rem;
-        }
-        .form-control:focus, .form-select:focus {
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
-        }
-        
-        /* Kategori Populer (Pills) */
+        .search-wrapper { margin-top: -80px; position: relative; z-index: 10; }
+        .search-container { background: white; padding: 15px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.05); }
+        .form-control, .form-select { border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; font-size: 1rem; }
+        .form-control:focus, .form-select:focus { border-color: var(--accent-color); box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); }
         .category-pill {
-            background: white;
-            border: 1px solid #e2e8f0;
-            padding: 10px 20px;
-            border-radius: 50px;
-            font-size: 0.9rem;
-            color: #64748b;
-            text-decoration: none;
-            transition: all 0.3s;
-            display: inline-block;
-            margin: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+            background: white; border: 1px solid #e2e8f0; padding: 10px 20px; border-radius: 50px;
+            font-size: 0.9rem; color: #64748b; text-decoration: none; transition: all 0.3s;
+            display: inline-block; margin: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);
         }
-        .category-pill:hover {
-            background: var(--accent-color);
-            color: white;
-            border-color: var(--accent-color);
-            transform: translateY(-2px);
-        }
-        .category-pill i { margin-right: 8px; }
-
-        /* Job Card Modern */
+        .category-pill:hover { background: var(--accent-color); color: white; border-color: var(--accent-color); transform: translateY(-2px); }
         .job-card {
-            background: white;
-            border: none;
-            border-radius: 16px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            margin-bottom: 20px;
-            position: relative;
-            overflow: hidden;
-            border: 1px solid transparent;
+            background: white; border: none; border-radius: 16px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-bottom: 20px; position: relative; overflow: hidden; border: 1px solid transparent;
         }
-        .job-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 30px -5px rgba(0,0,0,0.08);
-            border-color: #bfdbfe;
-        }
+        .job-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px -5px rgba(0,0,0,0.08); border-color: #bfdbfe; }
         .logo-box {
-            width: 65px; height: 65px;
-            border-radius: 14px;
-            background: #f8fafc;
+            width: 65px; height: 65px; border-radius: 14px; background: #f8fafc;
             display: flex; align-items: center; justify-content: center;
-            border: 1px solid #f1f5f9;
-            padding: 5px;
+            border: 1px solid #f1f5f9; padding: 5px;
         }
         .logo-box img { width: 100%; height: 100%; object-fit: contain; border-radius: 8px; }
-        
-        /* Sidebar Styles */
         .sidebar-card {
-            background: white;
-            border-radius: 16px;
-            border: none;
-            padding: 25px;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
-            margin-bottom: 25px;
+            background: white; border-radius: 16px; border: none; padding: 25px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 25px;
         }
-        
-        /* Statistik Section */
-        .stats-section {
-            background: white;
-            padding: 60px 0;
-            margin-top: 60px;
-            border-top: 1px solid #e2e8f0;
-        }
+        .stats-section { background: white; padding: 60px 0; margin-top: 60px; border-top: 1px solid #e2e8f0; }
         .stat-item h3 { font-size: 2.5rem; font-weight: 800; color: var(--accent-color); margin-bottom: 0; }
         .stat-item p { color: #64748b; font-weight: 500; }
-
-        /* CTA Box (Call to Action) */
-        .cta-box {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            border-radius: 20px;
-            padding: 50px;
-            color: white;
-            text-align: center;
-            margin: 60px 0;
-            position: relative;
-            overflow: hidden;
-        }
-        .cta-box::before {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            background: url('https://www.transparenttextures.com/patterns/cubes.png');
-            opacity: 0.1;
-        }
-        
-        /* Footer */
         footer { background: white; padding: 40px 0; border-top: 1px solid #e2e8f0; margin-top: 0; }
     </style>
 </head>
 
 <body>
-    <!-- Navbar Fixed -->
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container">
-            <a class="navbar-brand" href="index.php">
-                <i class="fas fa-layer-group me-2"></i>JobFinder
-            </a>
+            <a class="navbar-brand" href="index.php"><i class="fas fa-layer-group me-2"></i>JobFinder</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-center gap-2">
                     <?php if (isset($_SESSION['user_id'])): ?>
+                        <!-- LINK PROFIL USER -->
                         <li class="nav-item">
                             <span class="text-muted small me-2">Halo,</span> 
-                            <a href="dashboard.php" class="fw-bold text-dark text-decoration-none border-bottom border-2 border-primary pb-1">
+                            <a href="dashboard.php" class="fw-bold text-dark text-decoration-none border-bottom border-2 border-primary pb-1" title="Klik untuk lihat profil">
                                 <?= htmlspecialchars($_SESSION['user_name']) ?>
                             </a>
                         </li>
@@ -260,7 +163,7 @@ if (count($params) > 0) {
                             <a class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" href="register.php">Daftar</a>
                         </li>
                         <li class="nav-item border-start ps-3 ms-2">
-                            <!-- PERBAIKAN: Tambahkan folder 'company/' di depan link -->
+                            <!-- Link ke Login Perusahaan -->
                             <a class="btn btn-outline-secondary rounded-pill px-4 btn-sm" href="company/company_login.php">
                                 <i class="fas fa-building me-1"></i> Perusahaan
                             </a>
@@ -325,7 +228,6 @@ if (count($params) > 0) {
                     </form>
                 </div>
                 
-                <!-- Kategori Cepat (Agar tidak kosong) -->
                 <div class="mt-4 text-center">
                     <p class="small text-muted mb-2 fw-bold text-uppercase ls-1">Kategori Populer:</p>
                     <a href="?category=IT+%26+Software" class="category-pill"><i class="fas fa-code"></i> IT & Software</a>
@@ -351,7 +253,6 @@ if (count($params) > 0) {
                     <?php while ($job = $res->fetch_assoc()): ?>
                     <div class="job-card p-4">
                         <div class="d-flex align-items-start">
-                            <!-- Logo -->
                             <?php 
                                 $logoPath = '';
                                 if (!empty($job['logo'])) {
@@ -368,7 +269,6 @@ if (count($params) > 0) {
                                 <?php endif; ?>
                             </div>
 
-                            <!-- Content -->
                             <div class="flex-grow-1">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
@@ -437,43 +337,41 @@ if (count($params) > 0) {
                     </div>
                 </div>
                 
-                <!-- Banner Iklan / CTA Kecil -->
-                <div class="sidebar-card bg-primary text-white text-center position-relative overflow-hidden">
-                    <div style="position:relative; z-index:2;">
-                        <h5 class="fw-bold mb-2">Rekrutmen Kilat?</h5>
-                        <p class="small opacity-75 mb-3">Pasang lowongan dan temukan kandidat dalam hitungan jam.</p>
-                        <!-- PERBAIKAN: Tambahkan folder 'company/' -->
-                        <a href="company/company_login.php" class="btn btn-light text-primary btn-sm fw-bold w-100 rounded-pill">Mulai Sekarang</a>
+                <!-- Card Perusahaan Populer -->
+                <div class="sidebar-card card p-4">
+                    <h6 class="fw-bold mb-3">Perusahaan Terpopuler</h6>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <span class="badge bg-light text-dark border">Tokopedia</span>
+                        <span class="badge bg-light text-dark border">Gojek</span>
+                        <span class="badge bg-light text-dark border">Traveloka</span>
+                        <span class="badge bg-light text-dark border">Shopee</span>
                     </div>
-                    <!-- Hiasan background -->
-                    <i class="fas fa-rocket position-absolute text-white opacity-25" style="font-size: 8rem; bottom: -20px; right: -20px; transform: rotate(-15deg);"></i>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Statistik Section -->
+    <!-- Statistik Real-time -->
     <section class="stats-section text-center">
         <div class="container">
             <p class="text-uppercase text-primary fw-bold small ls-1 mb-4">Statistik Kami</p>
             <div class="row g-4">
                 <div class="col-md-4 stat-item">
-                    <h3>5,000+</h3>
+                    <h3><?= $count_jobs ?>+</h3>
                     <p>Lowongan Aktif</p>
                 </div>
                 <div class="col-md-4 stat-item">
-                    <h3>1,200+</h3>
+                    <h3><?= $count_companies ?>+</h3>
                     <p>Perusahaan Terpercaya</p>
                 </div>
                 <div class="col-md-4 stat-item">
-                    <h3>150k+</h3>
-                    <p>Pelamar Sukses</p>
+                    <h3><?= $count_users ?>+</h3>
+                    <p>Pelamar Bergabung</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Footer -->
     <footer class="text-center">
         <div class="container">
             <div class="mb-3">

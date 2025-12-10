@@ -3,16 +3,16 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// PATH DIPERBAIKI
+// Pastikan path config benar (naik satu folder)
 require_once('../config.php');
 session_start();
 
+// Cek apakah user sudah login sebagai perusahaan
 if (!isset($_SESSION['company_id'])) {
     header('Location: company_login.php');
     exit;
 }
 
-$success = '';
 $err = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -27,40 +27,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $comp_name = $_SESSION['company_name']; 
     $status = 'pending';
 
-    $logo_filename = null;
-    if (isset($_FILES['logo']) && $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
-        $ext = strtolower(pathinfo($_FILES['logo']['name'], PATHINFO_EXTENSION));
-        $allowed = ['jpg', 'jpeg', 'png', 'gif'];
-        
-        if (in_array($ext, $allowed)) {
-            $new_name = time() . '_' . uniqid() . '.' . $ext;
-            // Upload ke folder 'uploads' di dalam folder company
-            $target_dir = __DIR__ . '/uploads/';
-            
-            if (!is_dir($target_dir)) mkdir($target_dir, 0777, true);
-            
-            if (move_uploaded_file($_FILES['logo']['tmp_name'], $target_dir . $new_name)) {
-                $logo_filename = $new_name;
-            } else {
-                $err = "Gagal mengupload file logo.";
-            }
-        }
-    }
+    // 1. AMBIL LOGO DARI PROFIL PERUSAHAAN (Otomatis)
+    $stmt_logo = $conn->prepare("SELECT logo FROM companies WHERE id = ?");
+    $stmt_logo->bind_param('i', $comp_id);
+    $stmt_logo->execute();
+    $res_logo = $stmt_logo->get_result();
+    $row_logo = $res_logo->fetch_assoc();
+    
+    // Simpan nama file logo ke variabel (bisa null jika belum upload di profil)
+    $logo_to_use = $row_logo['logo'] ?? null;
 
-    if (empty($err)) {
-        $sql = "INSERT INTO jobs (title, company, company_id, location, category, type, salary, description, logo, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        $stmt = $conn->prepare($sql);
+    // 2. SIMPAN LOWONGAN KE DATABASE
+    $sql = "INSERT INTO jobs (title, company, company_id, location, category, type, salary, description, logo, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    
+    if ($stmt) {
+        $stmt->bind_param('ssisssssss', $title, $comp_name, $comp_id, $location, $category, $type, $salary, $desc, $logo_to_use, $status);
         
-        if ($stmt) {
-            $stmt->bind_param('ssisssssss', $title, $comp_name, $comp_id, $location, $category, $type, $salary, $desc, $logo_filename, $status);
-            
-            if ($stmt->execute()) {
-                echo "<script>alert('Lowongan berhasil dibuat! Status saat ini PENDING menunggu verifikasi Admin.'); window.location='company_dashboard.php';</script>";
-                exit;
-            } else {
-                $err = "Gagal menyimpan: " . $stmt->error;
-            }
+        if ($stmt->execute()) {
+            echo "<script>alert('Lowongan berhasil dibuat! Menggunakan logo dari profil Anda.'); window.location='company_dashboard.php';</script>";
+            exit;
+        } else {
+            $err = "Gagal menyimpan: " . $stmt->error;
         }
+    } else {
+        $err = "Database Error: " . $conn->error;
     }
 }
 ?>
@@ -84,51 +75,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="col-lg-8">
                 <div class="form-card p-4">
                     <h3 class="fw-bold mb-4 text-center">Buat Lowongan Baru</h3>
+                    
                     <?php if($err): ?><div class="alert alert-danger"><?=$err?></div><?php endif; ?>
+                    
+                    <!-- Info bahwa logo otomatis -->
+                    <div class="alert alert-info border-0 small">
+                        <i class="fas fa-info-circle me-1"></i> Logo lowongan akan otomatis menggunakan <strong>Logo Profil Perusahaan</strong>. 
+                        <a href="company_profile.php" class="fw-bold text-decoration-none">Ganti logo di sini</a>.
+                    </div>
 
-                    <form method="post" enctype="multipart/form-data">
-                        <div class="row g-3">
-                            <div class="col-12">
-                                <label class="form-label">Judul Posisi</label>
-                                <input type="text" name="title" class="form-control" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Lokasi</label>
+                    <form method="post">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Judul Posisi</label>
+                            <input type="text" name="title" class="form-control" required placeholder="Contoh: Staff Admin">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Lokasi</label>
                                 <input type="text" name="location" class="form-control" required>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Kategori</label>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Kategori</label>
                                 <select name="category" class="form-select" required>
-                                    <option value="IT">IT & Software</option>
+                                    <option value="IT & Software">IT & Software</option>
                                     <option value="Marketing">Marketing</option>
                                     <option value="Desain">Desain</option>
                                     <option value="Akuntansi">Akuntansi</option>
+                                    <option value="Administrasi">Administrasi</option>
+                                    <option value="Engineering">Engineering</option>
+                                    <option value="Human Resources">Human Resources</option>
                                 </select>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Tipe</label>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Tipe</label>
                                 <select name="type" class="form-select" required>
                                     <option value="Full Time">Full Time</option>
                                     <option value="Part Time">Part Time</option>
                                     <option value="Internship">Internship</option>
+                                    <option value="Freelance">Freelance</option>
                                 </select>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Gaji (Opsional)</label>
-                                <input type="text" name="salary" class="form-control">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Gaji</label>
+                                <input type="text" name="salary" class="form-control" placeholder="Opsional">
                             </div>
-                            <div class="col-12">
-                                <label class="form-label">Logo</label>
-                                <input type="file" name="logo" class="form-control">
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">Deskripsi</label>
-                                <textarea name="description" class="form-control" rows="5" required></textarea>
-                            </div>
-                            <div class="col-12 mt-4 d-flex justify-content-between">
-                                <a href="company_dashboard.php" class="btn btn-secondary">Batal</a>
-                                <button class="btn btn-primary fw-bold px-5">Posting</button>
-                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Deskripsi</label>
+                            <textarea name="description" class="form-control" rows="5" required></textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="company_dashboard.php" class="btn btn-secondary">Batal</a>
+                            <button class="btn btn-primary fw-bold px-5">Posting</button>
                         </div>
                     </form>
                 </div>
