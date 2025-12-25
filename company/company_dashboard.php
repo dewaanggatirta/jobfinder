@@ -6,6 +6,7 @@ ini_set('display_errors', 1);
 require_once('../config.php');
 session_start();
 
+// 1. Cek Login
 if (!isset($_SESSION['company_id'])) {
     header('Location: company_login.php');
     exit;
@@ -13,6 +14,49 @@ if (!isset($_SESSION['company_id'])) {
 
 $comp_id = $_SESSION['company_id'];
 $comp_name = isset($_SESSION['company_name']) ? $_SESSION['company_name'] : 'Perusahaan';
+
+// --- LOGIKA TOGGLE STATUS (Active <-> Inactive) ---
+if (isset($_GET['toggle_status']) && isset($_GET['id'])) {
+    $job_id = intval($_GET['id']);
+    
+    // Ambil status saat ini (pastikan milik perusahaan ini agar aman)
+    $stmt_cek = $conn->prepare("SELECT status FROM jobs WHERE id = ? AND company_id = ?");
+    $stmt_cek->bind_param('ii', $job_id, $comp_id);
+    $stmt_cek->execute();
+    $res_cek = $stmt_cek->get_result();
+    
+    if ($row = $res_cek->fetch_assoc()) {
+        $current_status = $row['status'];
+        $new_status = '';
+        $msg = '';
+        
+        // Logika Pergantian Status
+        if ($current_status == 'active') {
+            $new_status = 'inactive';
+            $msg = "Lowongan berhasil dinonaktifkan (Disembunyikan dari pelamar).";
+        } elseif ($current_status == 'inactive') {
+            $new_status = 'active';
+            $msg = "Lowongan berhasil diaktifkan kembali.";
+        } else {
+            // Jika status 'pending', tidak boleh diubah sendiri (harus admin)
+            $_SESSION['err'] = "Lowongan status Pending tidak bisa diubah manual. Tunggu persetujuan Admin.";
+        }
+        
+        // Eksekusi Update jika status valid
+        if (!empty($new_status)) {
+            $stmt_up = $conn->prepare("UPDATE jobs SET status = ? WHERE id = ?");
+            $stmt_up->bind_param('si', $new_status, $job_id);
+            if ($stmt_up->execute()) {
+                $_SESSION['msg'] = $msg;
+            }
+        }
+    }
+    
+    // Redirect balik biar URL bersih
+    header('Location: company_dashboard.php');
+    exit;
+}
+// --------------------------------------------------
 
 // Ambil data lowongan
 $sql = "SELECT j.*, 
@@ -26,7 +70,7 @@ $stmt->bind_param('i', $comp_id);
 $stmt->execute();
 $res = $stmt->get_result();
 
-// Hitung statistik
+// Hitung statistik sederhana
 $total_jobs = $res->num_rows;
 $total_applicants = 0;
 $jobs_data = [];
@@ -57,6 +101,7 @@ while($row = $res->fetch_assoc()){
         .status-active { background: #dcfce7; color: #166534; }
         .status-pending { background: #fef9c3; color: #854d0e; }
         .status-inactive { background: #fee2e2; color: #991b1b; }
+        .btn-xs { padding: 0.25rem 0.5rem; font-size: 0.75rem; border-radius: 0.2rem; }
     </style>
 </head>
 <body>
@@ -66,13 +111,11 @@ while($row = $res->fetch_assoc()){
             
             <div class="d-flex align-items-center gap-3">
                 <span class="text-muted small d-none d-md-block">Halo, 
-                    <!-- NAMA PERUSAHAAN JADI LINK -->
                     <a href="company_profile.php" class="text-decoration-none fw-bold text-dark border-bottom border-primary">
                         <?= htmlspecialchars($comp_name) ?>
                     </a>
                 </span>
                 
-                <!-- TOMBOL PROFIL (YANG KAMU CARI) -->
                 <a href="company_profile.php" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold">
                     <i class="fas fa-user-edit me-1"></i> Profil
                 </a>
@@ -83,7 +126,6 @@ while($row = $res->fetch_assoc()){
     </nav>
 
     <div class="container py-5">
-        <!-- Stats -->
         <div class="row g-4 mb-5">
             <div class="col-md-6">
                 <div class="stat-card">
@@ -107,19 +149,26 @@ while($row = $res->fetch_assoc()){
         </div>
 
         <?php if(isset($_SESSION['msg'])): ?>
-            <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
-                <?= $_SESSION['msg']; unset($_SESSION['msg']); ?>
+            <div class="alert alert-success alert-dismissible fade show mb-4 rounded-3 shadow-sm" role="alert">
+                <i class="fas fa-check-circle me-2"></i> <?= $_SESSION['msg']; unset($_SESSION['msg']); ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
+
+        <?php if(isset($_SESSION['err'])): ?>
+            <div class="alert alert-warning alert-dismissible fade show mb-4 rounded-3 shadow-sm" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i> <?= $_SESSION['err']; unset($_SESSION['err']); ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         <?php endif; ?>
 
         <div class="content-card">
             <div class="table-responsive">
-                <table class="table mb-0 table-hover">
+                <table class="table mb-0 table-hover align-middle">
                     <thead class="table-light">
                         <tr>
                             <th class="ps-4">Posisi & Lokasi</th>
-                            <th>Status</th>
+                            <th>Status Visibility</th>
                             <th>Pelamar</th>
                             <th>Tanggal Posting</th>
                             <th class="text-end pe-4">Aksi</th>
@@ -133,24 +182,48 @@ while($row = $res->fetch_assoc()){
                                     <div class="fw-bold text-dark"><?= htmlspecialchars($row['title']) ?></div>
                                     <div class="text-muted small"><i class="fas fa-map-marker-alt me-1"></i> <?= htmlspecialchars($row['location']) ?></div>
                                 </td>
+                                
                                 <td>
-                                    <?php 
-                                        if($row['status'] == 'active') echo '<span class="status-badge status-active">Active</span>';
-                                        elseif($row['status'] == 'pending') echo '<span class="status-badge status-pending">Pending</span>';
-                                        else echo '<span class="status-badge status-inactive">Inactive</span>';
-                                    ?>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <?php 
+                                            if($row['status'] == 'active') {
+                                                echo '<span class="status-badge status-active">Active</span>';
+                                            } elseif($row['status'] == 'pending') {
+                                                echo '<span class="status-badge status-pending">Pending Admin</span>';
+                                            } else {
+                                                echo '<span class="status-badge status-inactive">Inactive</span>';
+                                            }
+                                        ?>
+
+                                        <?php if($row['status'] == 'active'): ?>
+                                            <a href="company_dashboard.php?toggle_status=1&id=<?= $row['id'] ?>" 
+                                               class="btn btn-xs btn-outline-danger rounded-pill fw-bold" 
+                                               title="Sembunyikan lowongan ini"
+                                               onclick="return confirm('Sembunyikan lowongan ini? User tidak akan bisa melihatnya sementara.')">
+                                               <i class="fas fa-eye-slash"></i> Hide
+                                            </a>
+                                        <?php elseif($row['status'] == 'inactive'): ?>
+                                            <a href="company_dashboard.php?toggle_status=1&id=<?= $row['id'] ?>" 
+                                               class="btn btn-xs btn-outline-success rounded-pill fw-bold" 
+                                               title="Tampilkan kembali lowongan"
+                                               onclick="return confirm('Tampilkan kembali lowongan ini?')">
+                                               <i class="fas fa-eye"></i> Show
+                                            </a>
+                                        <?php endif; ?>
+                                        </div>
                                 </td>
+
                                 <td>
-                                    <span class="badge bg-primary rounded-pill px-3 py-2"><?= $row['total_pelamar'] ?></span>
+                                    <span class="badge bg-primary rounded-pill px-3 py-2"><?= $row['total_pelamar'] ?> Pelamar</span>
                                 </td>
                                 <td class="text-muted small">
                                     <?= date('d M Y', strtotime($row['posted_at'])) ?>
                                 </td>
                                 <td class="text-end pe-4">
                                     <div class="btn-group">
-                                        <a href="company_view_applicants.php?job_id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-primary fw-bold">Lihat Pelamar</a>
+                                        <a href="company_view_applicants.php?job_id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-primary fw-bold">Pelamar</a>
                                         <a href="company_edit_job.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-warning" title="Edit"><i class="fas fa-pencil-alt"></i></a>
-                                        <a href="company_delete_job.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-danger" title="Hapus" onclick="return confirm('Hapus lowongan ini?')"><i class="fas fa-trash"></i></a>
+                                        <a href="company_delete_job.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-danger" title="Hapus" onclick="return confirm('Hapus lowongan ini permanen?')"><i class="fas fa-trash"></i></a>
                                     </div>
                                 </td>
                             </tr>

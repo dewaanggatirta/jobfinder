@@ -1,89 +1,86 @@
 <?php
-// admin_login.php - KHUSUS UNTUK ADMIN
-require_once('./config.php');
+// admin/login.php
+require_once('../config.php');
 session_start();
 
-// Jika sudah login, lempar ke dashboard admin
-if (isset($_SESSION['admin_id'])) {
-    header('Location: admin/jobs.php');
-    exit;
-}
+if (isset($_SESSION['admin_id'])) { header('Location: index.php'); exit; }
 
-$err = '';
-
+$error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username']);
     $password = $_POST['password'];
 
-    // Cek ke tabel ADMIN, bukan users
-    $stmt = $conn->prepare('SELECT id, username, password FROM admin WHERE username = ?');
-    $stmt->bind_param('s', $username);
+    $stmt = $conn->prepare("SELECT id, username, password FROM admin WHERE username = ?");
+    $stmt->bind_param("s", $username);
     $stmt->execute();
     $res = $stmt->get_result();
 
     if ($row = $res->fetch_assoc()) {
-        // Verifikasi password
         if (password_verify($password, $row['password'])) {
-            // Set session khusus admin
             $_SESSION['admin_id'] = $row['id'];
-            $_SESSION['admin_username'] = $row['username'];
-            
-            // Arahkan ke folder admin/jobs.php
-            header('Location: admin/jobs.php');
+            $_SESSION['admin_name'] = $row['username'];
+            header("Location: index.php");
             exit;
-        } else {
-            $err = 'Password salah.';
-        }
-    } else {
-        $err = 'Username tidak ditemukan.';
-    }
+        } else { $error = "Password salah."; }
+    } else { $error = "Username tidak ditemukan."; }
 }
 ?>
 <!doctype html>
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login Administrator</title>
+    <title>Login Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { background-color: #343a40; color: #fff; }
-        .card { border: none; }
+        body { background-color: #f0f2f5; display: flex; align-items: center; min-height: 100vh; }
+        /* FORCE HIDE Browser Eye */
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear { display: none !important; }
     </style>
 </head>
-<body class="d-flex align-items-center min-vh-100">
+<body>
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-md-4">
-                <div class="text-center mb-4">
-                    <h3>JobFinder Admin</h3>
-                </div>
-                <div class="card shadow-lg text-dark">
+            <div class="col-md-5 col-lg-4">
+                <div class="card shadow-sm border-0 rounded-4">
                     <div class="card-body p-4">
-                        <h4 class="card-title mb-3 text-center">Login Admin</h4>
+                        <h4 class="card-title mb-4 text-center fw-bold">Login Admin</h4>
+                        <?php if ($error): ?><div class="alert alert-danger small py-2 rounded-3 text-center"><?=$error?></div><?php endif; ?>
                         
-                        <?php if($err): ?>
-                            <div class="alert alert-danger text-center"><?= htmlspecialchars($err) ?></div>
-                        <?php endif; ?>
-
-                        <form method="post">
-                            <div class="mb-3">
-                                <label class="form-label">Username</label>
-                                <input type="text" name="username" class="form-control" placeholder="admin" required>
+                        <form method="POST">
+                            <div class="mb-3"><label class="form-label fw-bold small">Username</label><input type="text" name="username" class="form-control" required></div>
+                            <div class="mb-4">
+                                <label class="form-label fw-bold small">Password</label>
+                                <div class="input-group">
+                                    <input type="password" name="password" id="adminPass" class="form-control border-end-0" required>
+                                    <span class="input-group-text bg-white border-start-0" style="cursor:pointer" onclick="togglePass()">
+                                        <i class="fas fa-eye text-muted" id="iconAdmin"></i>
+                                    </span>
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Password</label>
-                                <input type="password" name="password" class="form-control" placeholder="******" required>
-                            </div>
-                            <button class="btn btn-dark w-100 py-2">Masuk Dashboard</button>
+                            <button type="submit" class="btn btn-dark w-100 fw-bold py-2 rounded-3">Masuk Dashboard</button>
                         </form>
                     </div>
                 </div>
-                <div class="text-center mt-3">
-                    <a href="index.php" class="text-white-50 text-decoration-none">&larr; Kembali ke Website Utama</a>
-                </div>
+                <div class="text-center mt-3"><a href="../index.php" class="text-secondary small fw-bold">&larr; Kembali</a></div>
             </div>
         </div>
     </div>
+    <script>
+        function togglePass() {
+            var input = document.getElementById("adminPass");
+            var icon = document.getElementById("iconAdmin");
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.remove("fa-eye");
+                icon.classList.add("fa-eye-slash");
+            } else {
+                input.type = "password";
+                icon.classList.remove("fa-eye-slash");
+                icon.classList.add("fa-eye");
+            }
+        }
+    </script>
 </body>
 </html>

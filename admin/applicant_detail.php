@@ -1,5 +1,5 @@
 <?php
-// admin/applicant_detail.php
+// admin/applicant_detail.php - FIX TAMPILAN FEEDBACK
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -25,7 +25,7 @@ $user = $stmt_user->get_result()->fetch_assoc();
 
 if (!$user) { die("User tidak ditemukan."); }
 
-// 2. AMBIL RIWAYAT LAMARAN USER INI
+// 2. AMBIL RIWAYAT LAMARAN USER INI (Termasuk Feedback)
 $sql_history = "SELECT a.*, j.title, j.company, j.status as job_status 
                 FROM applications a
                 JOIN jobs j ON a.job_id = j.id
@@ -50,7 +50,6 @@ $history = $stmt_hist->get_result();
 <body class="hold-transition sidebar-mini dark-mode">
 <div class="wrapper">
 
-    <!-- Navbar & Sidebar (Sama seperti halaman lain) -->
     <nav class="main-header navbar navbar-expand navbar-dark">
         <ul class="navbar-nav">
             <li class="nav-item"><a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a></li>
@@ -80,7 +79,6 @@ $history = $stmt_hist->get_result();
         </div>
     </aside>
 
-    <!-- CONTENT -->
     <div class="content-wrapper">
         <section class="content-header">
             <div class="container-fluid">
@@ -101,14 +99,20 @@ $history = $stmt_hist->get_result();
         <section class="content">
             <div class="container-fluid">
                 <div class="row">
-                    <!-- PROFIL CARD -->
                     <div class="col-md-4">
                         <div class="card card-primary card-outline">
                             <div class="card-body box-profile">
                                 <div class="text-center">
-                                    <div class="img-circle elevation-2 d-flex align-items-center justify-content-center bg-light mx-auto" style="width:100px; height:100px; font-size:3rem; color:#007bff;">
-                                        <?= strtoupper(substr($user['name'], 0, 1)) ?>
-                                    </div>
+                                    <?php if(!empty($user['photo']) && file_exists('../uploads/'.$user['photo'])): ?>
+                                        <img class="profile-user-img img-fluid img-circle"
+                                             src="../uploads/<?= htmlspecialchars($user['photo']) ?>"
+                                             alt="User profile picture"
+                                             style="width:100px; height:100px; object-fit:cover;">
+                                    <?php else: ?>
+                                        <div class="img-circle elevation-2 d-flex align-items-center justify-content-center bg-light mx-auto" style="width:100px; height:100px; font-size:3rem; color:#007bff;">
+                                            <?= strtoupper(substr($user['name'], 0, 1)) ?>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                                 <h3 class="profile-username text-center mt-3"><?= htmlspecialchars($user['name']) ?></h3>
                                 <p class="text-muted text-center">Pencari Kerja</p>
@@ -124,7 +128,6 @@ $history = $stmt_hist->get_result();
                         </div>
                     </div>
 
-                    <!-- RIWAYAT LAMARAN -->
                     <div class="col-md-8">
                         <div class="card">
                             <div class="card-header p-2">
@@ -143,15 +146,27 @@ $history = $stmt_hist->get_result();
                                                     <div class="timeline-item border-0">
                                                         <span class="time"><i class="far fa-clock"></i> <?= date('d M Y H:i', strtotime($h['applied_at'])) ?></span>
                                                         <h3 class="timeline-header"><a href="#"><?= htmlspecialchars($h['title']) ?></a> di <?= htmlspecialchars($h['company']) ?></h3>
+                                                        
                                                         <div class="timeline-body">
-                                                            Status Lamaran: 
-                                                            <?php 
-                                                                if($h['status']=='approved') echo '<span class="badge badge-success">Diterima</span>';
-                                                                elseif($h['status']=='rejected') echo '<span class="badge badge-danger">Ditolak</span>';
-                                                                else echo '<span class="badge badge-warning">Pending</span>';
-                                                            ?>
-                                                            <br>
-                                                            <a href="../uploads/<?= htmlspecialchars($h['cv_file']) ?>" target="_blank" class="btn btn-xs btn-outline-info mt-2">Lihat CV yang dikirim</a>
+                                                            <p class="mb-2">
+                                                                Status: 
+                                                                <?php 
+                                                                    if($h['status']=='approved') echo '<span class="badge badge-success">Diterima</span>';
+                                                                    elseif($h['status']=='rejected') echo '<span class="badge badge-danger">Ditolak</span>';
+                                                                    else echo '<span class="badge badge-warning">Pending</span>';
+                                                                ?>
+                                                            </p>
+
+                                                            <?php if(!empty($h['feedback'])): ?>
+                                                                <div class="callout <?php echo ($h['status']=='approved' ? 'callout-success' : 'callout-danger'); ?> mt-2 mb-2">
+                                                                    <h6 class="text-bold text-sm"><i class="fas fa-comment-dots mr-1"></i> Pesan dari Perusahaan:</h6>
+                                                                    <p class="text-sm mb-0 font-italic">"<?= htmlspecialchars($h['feedback']) ?>"</p>
+                                                                </div>
+                                                            <?php endif; ?>
+
+                                                            <a href="../uploads/<?= htmlspecialchars($h['cv_file']) ?>" target="_blank" class="btn btn-xs btn-outline-info mt-1">
+                                                                <i class="fas fa-file-pdf"></i> Lihat CV User
+                                                            </a>
                                                         </div>
                                                     </div>
                                                 </div>

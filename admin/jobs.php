@@ -97,11 +97,20 @@ if(!$result){
     <link rel="stylesheet" href="./css/adminlte.min.css">
 
     <style>
-    .alert { margin: 15px; }
-    .description-cell {
-        max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    .alert {
+        margin: 15px;
     }
-    .action-buttons { white-space: nowrap; }
+
+    .description-cell {
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .action-buttons {
+        white-space: nowrap;
+    }
     </style>
 </head>
 
@@ -119,7 +128,7 @@ if(!$result){
             <!-- Right navbar links -->
             <ul class="navbar-nav ml-auto">
                 <li class="nav-item">
-                     <a class="nav-link" href="logout.php">Logout</a>
+                    <a class="nav-link" href="logout.php">Logout</a>
                 </li>
             </ul>
         </nav>
@@ -127,48 +136,59 @@ if(!$result){
 
         <!-- Main Sidebar Container -->
         <aside class="main-sidebar sidebar-dark-primary elevation-4">
-            <!-- Brand Logo -->
             <a href="index.php" class="brand-link">
                 <span class="brand-text font-weight-light">JobFinder Admin</span>
             </a>
 
-            <!-- Sidebar -->
             <div class="sidebar">
-                <!-- Sidebar Menu -->
                 <nav class="mt-2">
-                    <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu"
-                        data-accordion="false">
-                        <li class="nav-item menu-open">
-                            <a href="#" class="nav-link active">
-                                <p>Menu <i class="right fas fa-angle-left"></i></p>
+                    <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+
+                        <!-- MENU LANGSUNG (FLAT) -->
+                        <li class="nav-item">
+                            <a href="index.php" class="nav-link ">
+                                <i class="nav-icon fas fa-tachometer-alt"></i>
+                                <p>Dashboard</p>
                             </a>
-                            <ul class="nav nav-treeview">
-                                <li class="nav-item">
-                                    <a href="./index.php" class="nav-link">
-                                        <i class="far fa-circle nav-icon"></i>
-                                        <p>Dashboard</p>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="./jobs.php" class="nav-link active">
-                                        <i class="far fa-circle nav-icon"></i>
-                                        <p>Kelola Lowongan</p>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="./applicant.php" class="nav-link">
-                                        <i class="far fa-circle nav-icon"></i>
-                                        <p>Lihat Lamaran</p>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="./logout.php" class="nav-link">
-                                        <i class="far fa-circle nav-icon"></i>
-                                        <p>Logout</p>
-                                    </a>
-                                </li>
-                            </ul>
                         </li>
+
+                        <li class="nav-item">
+                            <a href="jobs.php" class="nav-link active">
+                                <i class="nav-icon fas fa-briefcase"></i>
+                                <p>Kelola Lowongan</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="applicant.php" class="nav-link">
+                                <i class="nav-icon fas fa-file-alt"></i>
+                                <p>Lihat Lamaran</p>
+                            </a>
+                        </li>
+
+                        <!-- MENU BARU: DATA PERUSAHAAN -->
+                        <li class="nav-item">
+                            <a href="manage_companies.php" class="nav-link">
+                                <i class="nav-icon fas fa-building"></i>
+                                <p>Data Perusahaan</p>
+                            </a>
+                        </li>
+
+                        <!-- MENU BARU: DATA USER -->
+                        <li class="nav-item">
+                            <a href="manage_users.php" class="nav-link">
+                                <i class="nav-icon fas fa-users"></i>
+                                <p>Data User</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="logout.php" class="nav-link text-danger">
+                                <i class="nav-icon fas fa-sign-out-alt"></i>
+                                <p>Logout</p>
+                            </a>
+                        </li>
+
                     </ul>
                 </nav>
             </div>
@@ -240,10 +260,13 @@ if(!$result){
                                                 <td><?php echo htmlspecialchars($row['title']); ?></td>
                                                 <td><?php echo htmlspecialchars($row['company']); ?></td>
                                                 <td><?php echo htmlspecialchars($row['location']); ?></td>
-                                                <td><small><?php echo htmlspecialchars($row['category']); ?></small></td>
-                                                <td><span class="badge badge-secondary"><?php echo htmlspecialchars($row['type']); ?></span></td>
+                                                <td><small><?php echo htmlspecialchars($row['category']); ?></small>
+                                                </td>
+                                                <td><span
+                                                        class="badge badge-secondary"><?php echo htmlspecialchars($row['type']); ?></span>
+                                                </td>
                                                 <td><small><?php echo htmlspecialchars($row['salary']); ?></small></td>
-                                                
+
                                                 <!-- KOLOM STATUS -->
                                                 <td>
                                                     <?php 
@@ -262,34 +285,34 @@ if(!$result){
 
                                                 <!-- KOLOM ACTION YANG SUDAH DIEDIT -->
                                                 <td class="action-buttons">
-                                                    
+
                                                     <?php if($row['status'] == 'pending'): ?>
-                                                        <!-- TOMBOL KHUSUS STATUS PENDING -->
-                                                        <a href="jobs.php?action=approve&id=<?= $row['id'] ?>" 
-                                                           class="btn btn-sm btn-success mb-1"
-                                                           onclick="return confirm('Terima lowongan ini?')"
-                                                           title="Terima / Approve">
-                                                           <i class="fas fa-check"></i>
-                                                        </a>
-                                                        <a href="jobs.php?action=reject&id=<?= $row['id'] ?>" 
-                                                           class="btn btn-sm btn-danger mb-1"
-                                                           onclick="return confirm('Tolak lowongan ini?')"
-                                                           title="Tolak / Reject">
-                                                           <i class="fas fa-times"></i>
-                                                        </a>
-                                                    
+                                                    <!-- TOMBOL KHUSUS STATUS PENDING -->
+                                                    <a href="jobs.php?action=approve&id=<?= $row['id'] ?>"
+                                                        class="btn btn-sm btn-success mb-1"
+                                                        onclick="return confirm('Terima lowongan ini?')"
+                                                        title="Terima / Approve">
+                                                        <i class="fas fa-check"></i>
+                                                    </a>
+                                                    <a href="jobs.php?action=reject&id=<?= $row['id'] ?>"
+                                                        class="btn btn-sm btn-danger mb-1"
+                                                        onclick="return confirm('Tolak lowongan ini?')"
+                                                        title="Tolak / Reject">
+                                                        <i class="fas fa-times"></i>
+                                                    </a>
+
                                                     <?php else: ?>
-                                                        <!-- TOMBOL LAMA (EDIT & DELETE) UNTUK YANG SUDAH TIDAK PENDING -->
-                                                        <a href="edit_job.php?id=<?php echo $row['id']; ?>"
-                                                            class="btn btn-sm btn-warning" title="Edit">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                        <button type="button" class="btn btn-sm btn-danger delete-btn"
-                                                            data-id="<?php echo $row['id']; ?>"
-                                                            data-title="<?php echo htmlspecialchars($row['title']); ?>"
-                                                            title="Hapus">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
+                                                    <!-- TOMBOL LAMA (EDIT & DELETE) UNTUK YANG SUDAH TIDAK PENDING -->
+                                                    <a href="edit_job.php?id=<?php echo $row['id']; ?>"
+                                                        class="btn btn-sm btn-warning" title="Edit">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <button type="button" class="btn btn-sm btn-danger delete-btn"
+                                                        data-id="<?php echo $row['id']; ?>"
+                                                        data-title="<?php echo htmlspecialchars($row['title']); ?>"
+                                                        title="Hapus">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
                                                     <?php endif; ?>
 
                                                 </td>
@@ -342,8 +365,13 @@ if(!$result){
     <script>
     $(function() {
         $("#example1").DataTable({
-            "responsive": true, "lengthChange": true, "autoWidth": false,
-            "pageLength": 10, "order": [[0, "desc"]]
+            "responsive": true,
+            "lengthChange": true,
+            "autoWidth": false,
+            "pageLength": 10,
+            "order": [
+                [0, "desc"]
+            ]
         });
 
         $(document).on('click', '.delete-btn', function() {
@@ -356,4 +384,5 @@ if(!$result){
     });
     </script>
 </body>
+
 </html>
